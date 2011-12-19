@@ -30,12 +30,12 @@
     <repository>
       <id>maven.sinnerschrader.it</id>
       <name>plugins-release</name>
-      <url>https://maven.sinnerschrader.it/plugins-release</url>
+      <url>http://maven.sinnerschrader.it/plugins-release</url>
     </repository>
     <snapshotRepository>
       <id>maven.sinnerschrader.it</id>
       <name>plugins-snapshot</name>
-      <url>https://maven.sinnerschrader.it/plugins-snapshot</url>
+      <url>http://maven.sinnerschrader.it/plugins-snapshot</url>
     </snapshotRepository>
   </distributionManagement>
 </project>
