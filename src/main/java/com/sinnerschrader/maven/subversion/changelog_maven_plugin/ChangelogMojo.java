@@ -89,38 +89,16 @@ public class ChangelogMojo extends AbstractMojo {
   }
 
   public void execute() throws MojoExecutionException {
+    StringBuilder lines = new StringBuilder();
+    StringBuilder xml = new StringBuilder();
     if (!shouldSkip()) {
       Pattern pattern = null;
       if (mustMatch != null) {
         pattern = Pattern.compile(mustMatch);
       }
-
-      StringBuilder lines = new StringBuilder();
-      StringBuilder xml = new StringBuilder();
       try {
-        getLog().info("Log svn repository: " + repositoryUrl);
-        DAVRepositoryFactory.setup();
-        String url = repositoryUrl;
-        if (url.startsWith("scm:svn:")) {
-          url = url.substring("scm:svn:".length());
-        }
-        SVNRepository repository = SVNRepositoryFactory.create(SVNURL.parseURIEncoded(url));
-        if (username != null && password != null) {
-          ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(username, password);
-          repository.setAuthenticationManager(authManager);
-        }
-        Collection<SVNLogEntry> entries = null;
-        try {
-          entries = getLogEntries(repository);
-        } catch (SVNAuthenticationException e) {
-          String _username = System.console().readLine("Username: ");
-          String _password = new String(System.console().readPassword("Password: "));
-          ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(_username, _password);
-          repository.setAuthenticationManager(authManager);
-          entries = getLogEntries(repository);
-        }
         xml.append("<log>");
-        for (SVNLogEntry entry : entries) {
+        for (SVNLogEntry entry : getLogEntries()) {
           if (pattern == null || pattern.matcher(entry.getMessage()).matches()) {
             lines.append(entry.getMessage()).append('\n');
             xml.append("<line>").append(entry.getMessage()).append("</line>");
@@ -130,7 +108,6 @@ public class ChangelogMojo extends AbstractMojo {
       } catch (SVNException e) {
         throw new MojoExecutionException("Failed to generate changelog", e);
       }
-      project.getProperties().setProperty(propertyLines, lines.toString());
       if (xslt != null) {
         StringWriter writer = new StringWriter();
         try {
@@ -140,11 +117,37 @@ public class ChangelogMojo extends AbstractMojo {
         } catch (Exception e) {
           throw new MojoExecutionException("Failed to transform changelog", e);
         }
-        project.getProperties().setProperty(propertyXml, writer.toString());
-      } else {
-        project.getProperties().setProperty(propertyXml, xml.toString());
+        xml.setLength(0);
+        xml.append(writer.toString());
       }
     }
+    project.getProperties().setProperty(propertyLines, lines.toString());
+    project.getProperties().setProperty(propertyXml, xml.toString());
+  }
+
+  private Collection<SVNLogEntry> getLogEntries() throws SVNException {
+    getLog().info("Log svn repository: " + repositoryUrl);
+    DAVRepositoryFactory.setup();
+    String url = repositoryUrl;
+    if (url.startsWith("scm:svn:")) {
+      url = url.substring("scm:svn:".length());
+    }
+    SVNRepository repository = SVNRepositoryFactory.create(SVNURL.parseURIEncoded(url));
+    if (username != null && password != null) {
+      ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(username, password);
+      repository.setAuthenticationManager(authManager);
+    }
+    Collection<SVNLogEntry> entries = null;
+    try {
+      entries = getLogEntries(repository);
+    } catch (SVNAuthenticationException e) {
+      String _username = System.console().readLine("Username: ");
+      String _password = new String(System.console().readPassword("Password: "));
+      ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(_username, _password);
+      repository.setAuthenticationManager(authManager);
+      entries = getLogEntries(repository);
+    }
+    return entries;
   }
 
   @SuppressWarnings("unchecked")
