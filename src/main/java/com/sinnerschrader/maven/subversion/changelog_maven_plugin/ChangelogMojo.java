@@ -14,6 +14,7 @@ import javax.xml.transform.stream.StreamSource;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
+import org.tmatesoft.svn.core.SVNAuthenticationException;
 import org.tmatesoft.svn.core.SVNException;
 import org.tmatesoft.svn.core.SVNLogEntry;
 import org.tmatesoft.svn.core.SVNURL;
@@ -36,6 +37,11 @@ public class ChangelogMojo extends AbstractMojo {
    * @readonly
    */
   private MavenProject project;
+
+  /**
+   * @parameter default-value="false"
+   */
+  private boolean skip;
 
   /**
    * @parameter default-value="${project.scm.connection}"
@@ -73,56 +79,76 @@ public class ChangelogMojo extends AbstractMojo {
    */
   private String xslt;
 
-  @SuppressWarnings("unchecked")
-  public void execute() throws MojoExecutionException {
-    Pattern pattern = null;
-    if (mustMatch != null) {
-      pattern = Pattern.compile(mustMatch);
-    }
+  private boolean shouldSkip() {
+    return skip || Boolean.parseBoolean(project.getProperties().getProperty("changelog.skip", "false"));
+  }
 
-    StringBuilder lines = new StringBuilder();
-    StringBuilder xml = new StringBuilder();
-    try {
-      getLog().info("Log svn repository: " + repositoryUrl);
-      DAVRepositoryFactory.setup();
-      String url = repositoryUrl;
-      if (url.startsWith("scm:svn:")) {
-        url = url.substring("scm:svn:".length());
+  public void execute() throws MojoExecutionException {
+    if (!shouldSkip()) {
+      Pattern pattern = null;
+      if (mustMatch != null) {
+        pattern = Pattern.compile(mustMatch);
       }
-      SVNRepository repository = SVNRepositoryFactory.create(SVNURL.parseURIEncoded(url));
-      if (username != null && password != null) {
-        ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(username, password);
-        repository.setAuthenticationManager(authManager);
-      }
-      long startRevision = SVNRevision.HEAD.getNumber();
-      long endRevision = 1000;
-      boolean changedPath = true;
-      boolean strictNode = true;
-      Collection<SVNLogEntry> entries = repository.log(new String[] {}, null, startRevision, endRevision, changedPath, strictNode);
-      xml.append("<log>");
-      for (SVNLogEntry entry : entries) {
-        if (pattern == null || pattern.matcher(entry.getMessage()).matches()) {
-          lines.append(entry.getMessage()).append('\n');
-          xml.append("<line>").append(entry.getMessage()).append("</line>");
-        }
-      }
-      xml.append("</log>");
-    } catch (SVNException e) {
-      throw new MojoExecutionException("Failed to generate changelog", e);
-    }
-    project.getProperties().setProperty(propertyLines, lines.toString());
-    if (xslt != null) {
-      StringWriter writer = new StringWriter();
+
+      StringBuilder lines = new StringBuilder();
+      StringBuilder xml = new StringBuilder();
       try {
-        TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        Transformer transformer = transformerFactory.newTransformer(new StreamSource(new FileReader(xslt)));
-        transformer.transform(new StreamSource(new StringReader(xml.toString())), new StreamResult(writer));
-      } catch (Exception e) {
-        throw new MojoExecutionException("Failed to transform changelog", e);
+        getLog().info("Log svn repository: " + repositoryUrl);
+        DAVRepositoryFactory.setup();
+        String url = repositoryUrl;
+        if (url.startsWith("scm:svn:")) {
+          url = url.substring("scm:svn:".length());
+        }
+        SVNRepository repository = SVNRepositoryFactory.create(SVNURL.parseURIEncoded(url));
+        if (username != null && password != null) {
+          ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(username, password);
+          repository.setAuthenticationManager(authManager);
+        }
+        Collection<SVNLogEntry> entries = null;
+        try {
+          entries = getLogEntries(repository);
+        } catch (SVNAuthenticationException e) {
+          String _username = System.console().readLine("Username: ");
+          String _password = new String(System.console().readPassword("Password: "));
+          ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(_username, _password);
+          repository.setAuthenticationManager(authManager);
+          entries = getLogEntries(repository);
+        }
+        xml.append("<log>");
+        for (SVNLogEntry entry : entries) {
+          if (pattern == null || pattern.matcher(entry.getMessage()).matches()) {
+            lines.append(entry.getMessage()).append('\n');
+            xml.append("<line>").append(entry.getMessage()).append("</line>");
+          }
+        }
+        xml.append("</log>");
+      } catch (SVNException e) {
+        throw new MojoExecutionException("Failed to generate changelog", e);
       }
-      project.getProperties().setProperty(propertyXml, writer.toString());
-    } else {
-      project.getProperties().setProperty(propertyXml, xml.toString());
+      project.getProperties().setProperty(propertyLines, lines.toString());
+      if (xslt != null) {
+        StringWriter writer = new StringWriter();
+        try {
+          TransformerFactory transformerFactory = TransformerFactory.newInstance();
+          Transformer transformer = transformerFactory.newTransformer(new StreamSource(new FileReader(xslt)));
+          transformer.transform(new StreamSource(new StringReader(xml.toString())), new StreamResult(writer));
+        } catch (Exception e) {
+          throw new MojoExecutionException("Failed to transform changelog", e);
+        }
+        project.getProperties().setProperty(propertyXml, writer.toString());
+      } else {
+        project.getProperties().setProperty(propertyXml, xml.toString());
+      }
     }
   }
+
+  @SuppressWarnings("unchecked")
+  private Collection<SVNLogEntry> getLogEntries(SVNRepository repository) throws SVNException {
+    long startRevision = SVNRevision.HEAD.getNumber();
+    long endRevision = 1000;
+    boolean changedPath = true;
+    boolean strictNode = true;
+    return repository.log(new String[] {}, null, startRevision, endRevision, changedPath, strictNode);
+  }
+
 }
