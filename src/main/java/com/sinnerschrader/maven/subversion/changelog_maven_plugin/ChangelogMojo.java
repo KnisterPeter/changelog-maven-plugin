@@ -80,7 +80,7 @@ public class ChangelogMojo extends AbstractMojo {
   private String xslt;
 
   private boolean shouldSkip() {
-    return skip || Boolean.parseBoolean(project.getProperties().getProperty("changelog.skip", "false"));
+    return skip || Boolean.parseBoolean(System.getProperty("changelog.skip", "false"));
   }
 
   public void execute() throws MojoExecutionException {
