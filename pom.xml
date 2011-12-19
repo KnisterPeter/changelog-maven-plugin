@@ -29,13 +29,13 @@
   <distributionManagement>
     <repository>
       <id>maven.sinnerschrader.it</id>
-      <name>plugins-release</name>
-      <url>http://maven.sinnerschrader.it/plugins-release</url>
+      <name>maven.sinnerschrader.it</name>
+      <url>http://maven.sinnerschrader.it/plugins-release-local</url>
     </repository>
     <snapshotRepository>
       <id>maven.sinnerschrader.it</id>
-      <name>plugins-snapshot</name>
-      <url>http://maven.sinnerschrader.it/plugins-snapshot</url>
+      <name>maven.sinnerschrader.it</name>
+      <url>http://maven.sinnerschrader.it/plugins-snapshot-local</url>
     </snapshotRepository>
   </distributionManagement>
 </project>
