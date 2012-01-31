@@ -134,7 +134,7 @@ public class ChangelogMojo extends AbstractMojo {
     }
     SVNRepository repository = SVNRepositoryFactory.create(SVNURL.parseURIEncoded(url));
     if (username != null && password != null) {
-      ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(username, password);
+      ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(null, username, password, false);
       repository.setAuthenticationManager(authManager);
     }
     Collection<SVNLogEntry> entries = null;
@@ -143,7 +143,7 @@ public class ChangelogMojo extends AbstractMojo {
     } catch (SVNAuthenticationException e) {
       String _username = System.console().readLine("Username: ");
       String _password = new String(System.console().readPassword("Password: "));
-      ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(_username, _password);
+      ISVNAuthenticationManager authManager = SVNWCUtil.createDefaultAuthenticationManager(null, _username, _password, false);
       repository.setAuthenticationManager(authManager);
       entries = getLogEntries(repository);
     }
