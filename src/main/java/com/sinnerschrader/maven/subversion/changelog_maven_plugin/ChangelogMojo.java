@@ -12,6 +12,7 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 
 import org.apache.maven.plugin.AbstractMojo;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
 import org.tmatesoft.svn.core.SVNAuthenticationException;
@@ -101,7 +102,7 @@ public class ChangelogMojo extends AbstractMojo {
         for (SVNLogEntry entry : getLogEntries()) {
           if (pattern == null || pattern.matcher(entry.getMessage()).matches()) {
             lines.append(entry.getMessage()).append('\n');
-            xml.append("<line>").append(entry.getMessage()).append("</line>");
+            xml.append("<line>").append(StringEscapeUtils.escapeXml(entry.getMessage())).append("</line>");
           }
         }
         xml.append("</log>");
